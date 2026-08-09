@@ -1,0 +1,66 @@
+# ============================================================
+# Shreshthaa Multi Speciality Dental Clinic — Production Security Headers
+# Apache .htaccess — deploy alongside index.html on any Apache/cPanel host
+# ============================================================
+
+<IfModule mod_headers.c>
+    # HTTP Strict Transport Security (HSTS) — force HTTPS for 1 year
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+
+    # Prevent MIME-type sniffing
+    Header always set X-Content-Type-Options "nosniff"
+
+    # Clickjacking protection
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    # Referrer policy — only send origin to same-site, nothing to cross-origin
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Disable unnecessary browser APIs
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()"
+
+    # Content Security Policy — scoped to only what the site uses
+    Header always set Content-Security-Policy "\
+        default-src 'self'; \
+        script-src 'self'; \
+        style-src 'self' https://fonts.googleapis.com; \
+        font-src 'self' https://fonts.gstatic.com; \
+        img-src 'self' data: https://lh3.ggpht.com https://lh4.ggpht.com https://lh5.ggpht.com https://lh6.ggpht.com https://maps.gstatic.com https://streetviewpixels-pa.googleapis.com; \
+        frame-src https://www.google.com; \
+        connect-src 'self'; \
+        object-src 'none'; \
+        base-uri 'self'; \
+        form-action 'self'; \
+        upgrade-insecure-requests;"
+
+    # Remove Server header to reduce information disclosure
+    Header unset Server
+    Header unset X-Powered-By
+</IfModule>
+
+# Force HTTPS redirect
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Prevent access to sensitive files
+<FilesMatch "\.(json|md|log|sh|env|bak|sql|conf)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Cache static assets
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 6 months"
+    ExpiresByType image/png "access plus 6 months"
+    ExpiresByType image/webp "access plus 6 months"
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
