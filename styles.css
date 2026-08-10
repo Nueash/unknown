@@ -207,14 +207,10 @@ button, input, select, textarea {
 .clinic-name {
     font-family: var(--font-heading);
     font-weight: 800;
-    font-size: 1.75rem;
+    font-size: 1.45rem;
     letter-spacing: -0.01em;
     color: var(--primary-navy);
     line-height: 1.1;
-    background: linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-blue) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
 }
 
 .clinic-sub {
