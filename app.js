@@ -1,14 +1,14 @@
 /* ==========================================================================
-   Shreshthaa Multi Speciality Dental Clinic — Main JavaScript Logic
+   Arc Dental — Main JavaScript Logic
    Security hardened: XSS-safe DOM construction, input validation,
    rate limiting, duplicate-submit prevention, allowlist enforcement.
    ========================================================================== */
 
 'use strict';
 
-/* ── Security helpers ──────────────────────────────────────────────────── */
+/* ── Security & Helper Functions ───────────────────────────────────────── */
 
-/** Escape HTML entities so no raw user input is ever written as markup */
+/** Escape HTML entities */
 function escapeHtml(str) {
     if (typeof str !== 'string') return '';
     return str
@@ -19,30 +19,31 @@ function escapeHtml(str) {
         .replace(/'/g, '&#x27;');
 }
 
-/** Strip everything except safe name characters */
+/** Strip unsafe characters for names */
 function sanitizeName(val) {
     return val.replace(/[^a-zA-Z\u0900-\u097F\s.'-]/g, '').slice(0, 80);
 }
 
-/** Accept only 10-digit Indian mobile numbers */
+/** Accept 10-digit Indian mobile numbers */
 function isValidPhone(val) {
     return /^[6-9]\d{9}$/.test(val.replace(/\s/g, ''));
 }
 
 /** Hard allowlist for service dropdown values */
 const ALLOWED_SERVICES = new Set([
-    'Tooth Pain / Consultation',
-    'Root Canal Treatment',
-    'Teeth Cleaning & Scaling',
-    'Crowns & Bridges',
-    'Tooth Filling',
+    'Pediatric Dentistry',
+    'Pediatric / Kids Dentistry',
+    'Invisible Braces',
+    'Invisible Braces & Aligners',
     'Dental Implants',
+    'Dental Implants & Rehabilitation',
+    'Root Canal Treatment',
+    'Root Canal Treatment (RCT)',
+    'Cosmetic Dentistry',
+    'Cosmetic Dentistry & Whitening',
     'General Dental Checkup',
-    'Tooth Pain Relief',
-    'Teeth Cleaning',
-    'Filling',
-    'Implants / Consultation',
-    'Checkup',
+    'Tooth Pain / Consultation',
+    'Teeth Cleaning'
 ]);
 
 /** Hard allowlist for time-slot dropdown values */
@@ -50,25 +51,24 @@ const ALLOWED_TIMES = new Set([
     'Morning (9:00 AM - 12:00 PM)',
     'Afternoon (12:00 PM - 4:00 PM)',
     'Evening (4:00 PM - 7:00 PM)',
-    'Night (7:00 PM - 9:30 PM)',
+    'Night (7:00 PM - 9:00 PM)',
     'Morning',
     'Afternoon',
     'Evening',
-    'Night',
+    'Night'
 ]);
 
-/** Simple rate-limiter: max 3 submissions per 5 minutes per session */
+/** Rate limiter: max 3 submissions per 5 minutes */
 const _submissionLog = [];
 function isRateLimited() {
     const now = Date.now();
-    const window = 5 * 60 * 1000; // 5 minutes
-    const recentCount = _submissionLog.filter(t => now - t < window).length;
+    const windowMs = 5 * 60 * 1000;
+    const recentCount = _submissionLog.filter(t => now - t < windowMs).length;
     if (recentCount >= 3) return true;
     _submissionLog.push(now);
     return false;
 }
 
-/** Prevent past dates being selected */
 function getMinDate() {
     return new Date().toISOString().split('T')[0];
 }
@@ -77,7 +77,7 @@ function getTomorrowDate() {
     return new Date(Date.now() + 86400000).toISOString().split('T')[0];
 }
 
-/* ── Safe DOM element builder (no innerHTML with user data) ────────────── */
+/* ── DOM Element Builder ────────────────────────────────────────────────── */
 function el(tag, attrs, ...children) {
     const node = document.createElement(tag);
     if (attrs) {
@@ -89,125 +89,115 @@ function el(tag, attrs, ...children) {
     }
     children.forEach(child => {
         if (child == null) return;
-        node.appendChild(typeof child === 'string'
-            ? document.createTextNode(child)
-            : child);
+        node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
     });
     return node;
 }
 
-/* ── Static treatment data (no user input — safe for innerHTML) ─────────── */
+/* ── Static Treatment Details Data ─────────────────────────────────────── */
 const treatmentDetailsData = {
-    'modal-rct': {
-        title: 'Root Canal Treatment (RCT)',
-        tag: 'Painless & Tooth-Saving Procedure',
-        description: 'Root Canal Treatment is designed to eliminate infection inside the tooth pulp and preserve your natural tooth, avoiding extraction. Under Dr. Sushma Reddy\u2019s care in Kharmanghat, RCT is performed with advanced rotary technology under localized anesthesia.',
+    'modal-kids': {
+        title: 'Pediatric & Kids Dentistry',
+        tag: '100% Painless & Fear-Free Child Care',
+        description: 'Dr. Rebecca is a highly acclaimed specialist in pediatric dentistry. We ensure children have a joyful, comfortable, and zero-pain experience during cavity fillings, preventive fluoride treatments, and habit counseling.',
         steps: [
-            'Comprehensive X-ray diagnosis to evaluate canal anatomy.',
-            'Gentle local anesthesia to ensure 100% painless procedure.',
-            'Thorough cleaning & disinfection of infected root canals.',
-            'Sealing with biocompatible gutta-percha material.',
-            'Crown placement (Zirconia/Ceramic) for structural protection.'
-        ],
-        duration: '1 to 2 visits (approx. 45 mins each)',
-        idealFor: 'Severe toothache, sensitivity to hot/cold, pain while chewing, deep cavity.'
-    },
-    'modal-pain': {
-        title: 'Emergency Tooth Pain Relief',
-        tag: 'Same-Day Urgent Care in Kharmanghat',
-        description: 'Sudden toothache can disrupt sleep and daily life. At Shreshthaa Dental, we prioritise emergency cases to provide immediate diagnostic relief, infection control, and pain management.',
-        steps: [
-            'Immediate clinical exam & digital radiographic scan.',
-            'Instant pain-relieving medication & localised intervention.',
-            'Clear treatment plan explanation (Filling, RCT, or extraction if un-restorable).'
+            'Friendly pediatric consultation & gentle oral assessment.',
+            'Pain-free localized numbing techniques for child comfort.',
+            'Preventive cavity sealing & protective fluoride coating.',
+            'Positive reinforcement & fun oral hygiene education.'
         ],
         duration: '30 to 45 minutes',
-        idealFor: 'Swollen gums, throbbing toothache, wisdom tooth pain, cracked tooth.'
+        idealFor: 'Children, toddlers, teens, cavity prevention, thumb sucking habits, tooth pain.'
     },
-    'modal-cleaning': {
-        title: 'Teeth Cleaning & Ultrasonic Scaling',
-        tag: 'Preventive Oral Hygiene & Fresh Breath',
-        description: 'Regular brushing cannot remove hardened dental calculus (tartar). Ultrasonic scaling gently removes plaque deposits around the gumline, preventing gingivitis, gum recession, and bad breath.',
+    'modal-aligners': {
+        title: 'Invisible Braces & Aligners',
+        tag: 'Modern Wire-Free Smile Straightening',
+        description: 'Achieve a straight, confident smile without bulky metal braces. Clear aligners are custom-made transparent trays that gently align your teeth. Removable, virtually invisible, and comfortable.',
         steps: [
-            'Ultrasonic scaler vibrations to loosen hardened tartar deposits.',
-            'Sub-gingival plaque rinse for gum health.',
-            'Prophylaxis polishing with fluoride paste for stain removal.'
+            '3D digital intraoral scan & smile design simulation.',
+            'Custom fabrication of clear aligner tray sets.',
+            'Progressive tray changes every 2 weeks.',
+            'Final retention phase for long-lasting alignment.'
         ],
-        duration: '30 to 40 minutes',
-        idealFor: 'Bleeding gums, yellowing teeth, bad breath, 6-month routine care.'
-    },
-    'modal-crowns': {
-        title: 'Dental Crowns & Fixed Bridges',
-        tag: 'Durable Restoration & Aesthetic Match',
-        description: 'Custom ceramic or zirconia crowns cap weak, fractured, or post-RCT teeth to restore 100% chewing strength. Fixed dental bridges replace missing teeth seamlessly.',
-        steps: [
-            'Tooth preparation and digital shade matching.',
-            'Precision impression for custom laboratory fabrication.',
-            'Permanent cementation of high-strength crown.'
-        ],
-        duration: '2 appointments over 3 to 5 days',
-        idealFor: 'Weakened teeth post-RCT, fractured teeth, replacing missing teeth.'
-    },
-    'modal-preventive': {
-        title: 'Preventive Care & Composite Fillings',
-        tag: 'Aesthetic Tooth-Colored Restorations',
-        description: 'Catch cavities early before they reach the nerve! Composite fillings match your natural enamel colour perfectly, restoring tooth structure invisibly and durably.',
-        steps: [
-            'Plaque & decay removal under magnification.',
-            'Bonding with tooth-coloured composite resin.',
-            'Light curing and bite polishing for immediate chewing.'
-        ],
-        duration: '30 minutes per tooth',
-        idealFor: 'Black spots, early decay, food lodgement, chipped enamel.'
+        duration: '6 to 14 months (custom digital plan)',
+        idealFor: 'Crooked teeth, gaps, crowding, adults & teens seeking discreet braces.'
     },
     'modal-implants': {
-        title: 'Dental Implants & Alignment Consultations',
-        tag: 'Permanent Root Replacement & Smile Alignment',
-        description: 'Dental implants provide a permanent, artificial titanium root topped with a crown, functioning exactly like a natural tooth. We also offer consultations for braces and clear aligners.',
+        title: 'Dental Implants & Full Mouth Rehabilitation',
+        tag: 'Permanent Root & Crown Replacement',
+        description: 'Dental implants replace missing tooth roots with bio-compatible titanium posts topped with realistic ceramic crowns. Restores 100% natural bite strength and aesthetics.',
         steps: [
-            '3D imaging & bone density assessment.',
-            'Precision implant placement under gentle anesthesia.',
-            'Osseointegration healing followed by final crown placement.'
+            'Digital 3D CBCT scan & jawbone evaluation.',
+            'Precision surgical implant placement under gentle anesthesia.',
+            'Healing & osseointegration bonding phase.',
+            'Custom shade-matched Zirconia crown fitting.'
         ],
         duration: 'Multi-phase treatment with custom timeline',
-        idealFor: 'Missing single or multiple teeth, loose dentures, misaligned teeth.'
+        idealFor: 'Single or multiple missing teeth, loose dentures, full mouth restoration.'
+    },
+    'modal-rct': {
+        title: 'Root Canal Treatment (RCT)',
+        tag: 'Painless Single-Visit Tooth Saving',
+        description: 'Painless rotary root canal therapy saves infected teeth from extraction. Dr. Rebecca eliminates deep pulp infection while ensuring total patient comfort.',
+        steps: [
+            'Digital X-ray diagnosis to inspect root canals.',
+            'Gentle localized anesthesia ensuring zero pain.',
+            'Rotary cleaning & thorough canal disinfection.',
+            'Sealing with biocompatible gutta-percha & crown placement.'
+        ],
+        duration: '1 to 2 visits (approx. 45 mins each)',
+        idealFor: 'Severe toothache, sensitivity to hot/cold, deep decay, chewing pain.'
+    },
+    'modal-cosmetic': {
+        title: 'Cosmetic Dentistry & Teeth Whitening',
+        tag: 'Aesthetic Smile Transformations',
+        description: 'Enhance your natural smile with professional laser teeth whitening, aesthetic composite bonding, tooth-colored fillings, and porcelain veneers.',
+        steps: [
+            'Smile analysis & shade selection.',
+            'Gentle enamel cleaning & whitening gel application.',
+            'Laser activation for instant shade brightening.',
+            'Polishing for lasting shine.'
+        ],
+        duration: '45 to 60 minutes',
+        idealFor: 'Yellowed teeth, tea/coffee stains, chipped enamel, smile makeovers.'
     }
 };
 
+/* ── Static Treatment Guide / Estimator Data ────────────────────────────── */
 const estimatorData = {
-    'symptom-pain': {
-        title: 'Severe Toothache or Deep Cavity',
-        recommendation: 'Root Canal Treatment (RCT) or Deep Composite Filling',
-        duration: '1 \u2013 2 Visits (45 mins per session)',
-        roadmap: 'Digital X-ray assessment \u2192 Gentle localised anesthesia \u2192 Cleaning infected canal \u2192 High-durability Crown placement.',
-        note: 'Dr. Sushma Reddy will aim to save your natural tooth whenever possible.'
+    'symptom-kids': {
+        title: 'Kids Dental Checkup / Cavity Care',
+        recommendation: 'Pediatric Dental Exam & Painless Composite Sealing',
+        duration: 'Single Visit (approx. 30 mins)',
+        roadmap: 'Gentle clinical exam \u2192 Kid-friendly cavity cleaning \u2192 Tooth-colored composite filling \u2192 Preventive fluoride coating.',
+        note: 'Dr. Rebecca is specialized in effortless, fear-free dental care for children.'
     },
-    'symptom-cleaning': {
-        title: 'Yellow Teeth / Tartar / Bleeding Gums',
-        recommendation: 'Ultrasonic Teeth Cleaning & Polishing',
-        duration: 'Single Visit (approx. 35 mins)',
-        roadmap: 'Ultrasonic plaque scaling \u2192 Gum inflammation rinse \u2192 Teeth polishing for smooth, stain-free smile.',
-        note: 'Recommended every 6 months for complete gum disease prevention.'
+    'symptom-aligners': {
+        title: 'Crooked Teeth or Gap Alignment',
+        recommendation: 'Invisible Aligners / Clear Braces',
+        duration: 'Custom 6 \u2013 12 Months Digital Alignment',
+        roadmap: '3D Intraoral scan \u2192 Digital smile preview \u2192 Custom clear tray set delivery \u2192 Periodic quick checkups.',
+        note: '100% transparent and removable — no metal wires or food restrictions.'
     },
     'symptom-missing': {
-        title: 'Missing Single or Multiple Teeth',
-        recommendation: 'Dental Implant or Fixed Ceramic Bridge',
-        duration: 'Custom multi-step timeline based on bone health',
-        roadmap: 'Consultation & 3D scan \u2192 Implant root placement / Bridge preparation \u2192 Custom crown fitting.',
-        note: 'Restores 100% natural chewing capability and smile confidence.'
+        title: 'Missing Tooth Replacement',
+        recommendation: 'Bio-compatible Dental Implant or Fixed Bridge',
+        duration: 'Multi-phase custom timeline',
+        roadmap: 'Consultation & 3D scan \u2192 Implant placement \u2192 Permanent Zirconia Crown attachment.',
+        note: 'Restores 100% natural chewing strength and jawbone health.'
     },
-    'symptom-checkup': {
-        title: 'Routine Oral Checkup & Minor Cavities',
-        recommendation: 'Comprehensive Exam & Tooth-Colored Composite Fillings',
-        duration: 'Single Visit (approx. 30 mins)',
-        roadmap: 'Clinical exam under magnification \u2192 Light cavity removal \u2192 Invisible composite filling.',
-        note: 'Prevents minor decay from escalating into painful root canal issues.'
+    'symptom-pain': {
+        title: 'Severe Tooth Pain / Infection',
+        recommendation: 'Painless Rotary Root Canal Treatment (RCT)',
+        duration: '1 \u2013 2 Sessions (45 mins each)',
+        roadmap: 'Digital X-ray \u2192 Gentle localized anesthesia \u2192 Canal cleaning & sealing \u2192 Protective Crown fitting.',
+        note: 'Instant pain relief while preserving your natural tooth structure.'
     }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    /* ── 1. Mobile Menu ─────────────────────────────────────────────────── */
+    /* ── 1. Mobile Navigation ───────────────────────────────────────────── */
     const mobileToggle = document.getElementById('mobileToggle');
     const navMenu = document.getElementById('navMenu');
 
@@ -215,8 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         mobileToggle.addEventListener('click', () => {
             navMenu.classList.toggle('active');
             mobileToggle.classList.toggle('active');
-            const expanded = navMenu.classList.contains('active');
-            mobileToggle.setAttribute('aria-expanded', String(expanded));
+            mobileToggle.setAttribute('aria-expanded', String(navMenu.classList.contains('active')));
         });
 
         navMenu.querySelectorAll('.nav-link').forEach(link => {
@@ -228,8 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.addEventListener('click', (e) => {
-            if (!navMenu.contains(e.target) && !mobileToggle.contains(e.target)
-                && navMenu.classList.contains('active')) {
+            if (!navMenu.contains(e.target) && !mobileToggle.contains(e.target) && navMenu.classList.contains('active')) {
                 navMenu.classList.remove('active');
                 mobileToggle.classList.remove('active');
                 mobileToggle.setAttribute('aria-expanded', 'false');
@@ -265,12 +253,11 @@ document.addEventListener('DOMContentLoaded', () => {
     closeModalBtn?.addEventListener('click', closeBookingModal);
     bookingModal?.addEventListener('click', e => { if (e.target === bookingModal) closeBookingModal(); });
 
-    // Close modals on Escape key
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') { closeBookingModal(); closeDetailModal(); }
     });
 
-    /* ── 3. Treatment Detail Modal (XSS-safe DOM construction) ─────────── */
+    /* ── 3. Treatment Detail Modal ─────────────────────────────────────── */
     const detailModal = document.getElementById('detailModal');
     const detailModalContent = document.getElementById('detailModalContent');
     const closeDetailBtn = document.getElementById('closeDetailBtn');
@@ -283,8 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function buildDetailContent(data, modalKey) {
-        // All data is from the static JS object above — no user input involved.
-        // We still use DOM construction to be defensive.
         const wrap = el('div', { className: 'modal-detail-body' });
 
         wrap.appendChild(el('span', { className: 'modal-detail-tag' }, data.tag));
@@ -312,8 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const actions = el('div', { style: 'display:flex;gap:1rem;flex-wrap:wrap' });
         const bookBtn = el('button', { className: 'btn btn-primary btn-block open-booking-from-modal', style: 'flex:1' },
             'Book Appointment for ' + data.title);
-        const callBtn = el('a', { href: 'tel:9704831481', className: 'btn btn-outline', style: 'flex:1' },
-            'Call Clinic: 97048 31481');
+        const callBtn = el('a', { href: 'tel:+9198496333188', className: 'btn btn-outline', style: 'flex:1' },
+            'Call Clinic: +91 98496 333188');
         actions.appendChild(bookBtn);
         actions.appendChild(callBtn);
         wrap.appendChild(actions);
@@ -324,12 +309,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const modalService = document.getElementById('modalService');
             if (modalService) {
                 const map = {
+                    'modal-kids': 'Pediatric Dentistry',
+                    'modal-aligners': 'Invisible Braces',
+                    'modal-implants': 'Dental Implants',
                     'modal-rct': 'Root Canal Treatment',
-                    'modal-pain': 'Tooth Pain Relief',
-                    'modal-cleaning': 'Teeth Cleaning',
-                    'modal-crowns': 'Crowns & Bridges',
-                    'modal-preventive': 'Filling',
-                    'modal-implants': 'Implants / Consultation',
+                    'modal-cosmetic': 'Cosmetic Dentistry',
                 };
                 if (map[modalKey]) modalService.value = map[modalKey];
             }
@@ -341,11 +325,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.open-details-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const modalKey = btn.getAttribute('data-modal');
-            // Allowlist the modal key
             if (!treatmentDetailsData.hasOwnProperty(modalKey)) return;
             const data = treatmentDetailsData[modalKey];
             if (data && detailModalContent && detailModal) {
-                detailModalContent.textContent = ''; // clear safely
+                detailModalContent.textContent = '';
                 detailModalContent.appendChild(buildDetailContent(data, modalKey));
                 detailModal.classList.add('active');
                 detailModal.setAttribute('aria-hidden', 'false');
@@ -357,7 +340,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeDetailBtn?.addEventListener('click', closeDetailModal);
     detailModal?.addEventListener('click', e => { if (e.target === detailModal) closeDetailModal(); });
 
-    /* ── 4. Estimator (XSS-safe DOM construction) ───────────────────────── */
+    /* ── 4. Estimator ───────────────────────────────────────────────────── */
     const estimatorTabs = document.querySelectorAll('.estimator-tab');
     const estimatorResult = document.getElementById('estimatorResult');
 
@@ -387,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         footer.appendChild(el('span', {
             style: 'font-weight:700;color:var(--accent-emerald);font-size:0.95rem'
-        }, '\u2713 Consultation Available at Shreshthaa Dental Kharmanghat'));
+        }, '\u2713 Consultation Available at Arc Dental Kharmanghat'));
 
         const bookBtn = el('button', { className: 'btn btn-primary open-booking-btn' },
             'Book Consultation for This Issue');
@@ -399,11 +382,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateEstimator(symptomKey) {
-        // Allowlist the key
         if (!estimatorData.hasOwnProperty(symptomKey)) return;
         const data = estimatorData[symptomKey];
         if (data && estimatorResult) {
-            estimatorResult.textContent = ''; // clear safely
+            estimatorResult.textContent = '';
             estimatorResult.appendChild(buildEstimatorContent(data));
         }
     }
@@ -417,24 +399,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    updateEstimator('symptom-pain');
+    updateEstimator('symptom-kids');
 
     /* ── 5. FAQ Accordion ───────────────────────────────────────────────── */
     document.querySelectorAll('.faq-question').forEach(q => {
         q.addEventListener('click', () => q.parentElement.classList.toggle('active'));
     });
 
-    /* ── 6. Appointment Form — validated, sanitized, rate-limited ────────── */
+    /* ── 6. Form Handler & WhatsApp Integration ─────────────────────────── */
     function handleFormSubmit(event, nameId, phoneId, serviceId, dateId, timeId, notesId) {
         event.preventDefault();
 
-        // Rate limiting
         if (isRateLimited()) {
             alert('Too many requests. Please wait a few minutes before submitting again.');
             return;
         }
 
-        // Read and sanitize inputs
         const rawName    = document.getElementById(nameId)?.value.trim() ?? '';
         const rawPhone   = document.getElementById(phoneId)?.value.trim() ?? '';
         const rawService = document.getElementById(serviceId)?.value ?? '';
@@ -447,10 +427,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const service = rawService;
         const date    = rawDate;
         const time    = rawTime;
-        // Limit notes to 300 characters, strip HTML-like content
         const notes   = rawNotes.replace(/<[^>]*>/g, '').slice(0, 300);
 
-        // ── Validation ────────────────────────────────────────────────────
         if (!name || name.length < 2) {
             alert('Please enter a valid patient name (at least 2 characters).');
             return;
@@ -471,7 +449,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Block past dates
         if (date < getMinDate()) {
             alert('Appointment date cannot be in the past. Please select today or a future date.');
             return;
@@ -482,55 +459,40 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // ── Build WhatsApp message (encode all user input) ─────────────────
+        // WhatsApp message redirecting to +9198496333188
         const waText = encodeURIComponent(
-            'Hello Dr. Sushma Reddy / Shreshthaa Dental Clinic,\n\n' +
-            'I would like to request a dental appointment:\n' +
-            '\u2022 Patient Name: ' + name + '\n' +
-            '\u2022 Phone: ' + phone + '\n' +
-            '\u2022 Required Service: ' + service + '\n' +
-            '\u2022 Preferred Date: ' + date + '\n' +
-            '\u2022 Preferred Time Slot: ' + time + '\n' +
-            (notes ? '\u2022 Notes/Concern: ' + notes + '\n\n' : '\n') +
+            'Hi Arc Dental, I want to book an appointment\n\n' +
+            '• Patient Name: ' + name + '\n' +
+            '• Phone: ' + phone + '\n' +
+            '• Required Service: ' + service + '\n' +
+            '• Preferred Date: ' + date + '\n' +
+            '• Preferred Time Slot: ' + time + '\n' +
+            (notes ? '• Notes/Concern: ' + notes + '\n\n' : '\n') +
             'Please confirm my appointment slot. Thank you!'
         );
 
-        // Validate the WhatsApp URL before opening (no open-redirect)
-        const waUrl = 'https://wa.me/919704831481?text=' + waText;
-        let parsedUrl;
-        try {
-            parsedUrl = new URL(waUrl);
-        } catch {
-            alert('Unable to generate WhatsApp link. Please call the clinic directly.');
-            return;
-        }
-        if (parsedUrl.hostname !== 'wa.me') {
-            alert('Invalid redirect. Please call the clinic directly.');
-            return;
-        }
+        const waUrl = 'https://wa.me/9198496333188?text=' + waText;
 
         closeBookingModal();
 
         const confirmDialog = confirm(
             'Thank you, ' + escapeHtml(name) + '! Your appointment request is ready.\n\n' +
-            'Would you like to open WhatsApp now to send your details to Shreshthaa Dental Clinic?'
+            'Would you like to open WhatsApp now to send your appointment details directly to Arc Dental?'
         );
 
         if (confirmDialog) {
-            // Open in new tab — noopener set programmatically
             const win = window.open(waUrl, '_blank', 'noopener,noreferrer');
             if (!win) {
-                alert('Pop-up was blocked. Please allow pop-ups for this page or call 97048 31481 directly.');
+                alert('Pop-up was blocked. Please allow pop-ups for this page or call +91 98496 333188 directly.');
             }
         } else {
             alert('Your request for ' + escapeHtml(service) + ' on ' + date +
-                  ' has been noted. Our team will call you shortly.');
+                  ' has been noted. Our team will call you shortly at ' + phone + '!');
         }
 
         event.target.reset();
     }
 
-    // Wire up both forms
     document.getElementById('inlineBookingForm')?.addEventListener('submit', e => {
         handleFormSubmit(e, 'inlineName', 'inlinePhone', 'inlineService', 'inlineDate', 'inlineTime', 'inlineNotes');
     });
@@ -539,14 +501,12 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFormSubmit(e, 'modalName', 'modalPhone', 'modalService', 'modalDate', 'modalTime', null);
     });
 
-    // Set date constraints
     const inlineDate = document.getElementById('inlineDate');
     if (inlineDate) {
         inlineDate.setAttribute('min', getMinDate());
         if (!inlineDate.value) inlineDate.value = getTomorrowDate();
     }
 
-    // Dynamic footer year
     const yearSpan = document.getElementById('year');
     if (yearSpan) yearSpan.textContent = new Date().getFullYear();
 });

@@ -1,6 +1,6 @@
 # ============================================================
-# Shreshthaa Multi Speciality Dental Clinic — Production Security Headers
-# Apache .htaccess — deploy alongside index.html on any Apache/cPanel host
+# Arc Dental — Production Security Headers
+# Apache .htaccess — deploy alongside index.html
 # ============================================================
 
 <IfModule mod_headers.c>
@@ -13,19 +13,19 @@
     # Clickjacking protection
     Header always set X-Frame-Options "SAMEORIGIN"
 
-    # Referrer policy — only send origin to same-site, nothing to cross-origin
+    # Referrer policy
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
     # Disable unnecessary browser APIs
     Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), interest-cohort=()"
 
-    # Content Security Policy — scoped to only what the site uses
+    # Content Security Policy
     Header always set Content-Security-Policy "\
         default-src 'self'; \
         script-src 'self'; \
         style-src 'self' https://fonts.googleapis.com; \
         font-src 'self' https://fonts.gstatic.com; \
-        img-src 'self' data: https://lh3.ggpht.com https://lh4.ggpht.com https://lh5.ggpht.com https://lh6.ggpht.com https://maps.gstatic.com https://streetviewpixels-pa.googleapis.com; \
+        img-src 'self' data: https://lh3.ggpht.com https://lh4.ggpht.com https://lh5.ggpht.com https://lh6.ggpht.com https://maps.gstatic.com https://streetviewpixels-pa.googleapis.com https://images.unsplash.com; \
         frame-src https://www.google.com; \
         connect-src 'self'; \
         object-src 'none'; \
@@ -33,7 +33,7 @@
         form-action 'self'; \
         upgrade-insecure-requests;"
 
-    # Remove Server header to reduce information disclosure
+    # Remove Server headers
     Header unset Server
     Header unset X-Powered-By
 </IfModule>

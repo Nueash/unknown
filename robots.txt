@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://shreshthaadental.com/sitemap.xml
+Sitemap: https://arcdental.in/sitemap.xml
